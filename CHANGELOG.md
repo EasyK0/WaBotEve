@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Wabot. Versions follow `MAJOR.MINOR.PATCH`.
+All notable changes to Wabot. Adding a new version at the top publishes a GitHub release for it.
 
 ## [1.10.0] - 2026-10-27
 
