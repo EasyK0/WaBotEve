@@ -1,0 +1,14 @@
+# Pinned runtime dependencies, Python 3.11/3.12.
+discord.py==2.7.1
+aiosqlite==0.22.1
+filelock==3.32.7
+aiohttp==3.14.3
+aiohappyeyeballs==2.7.1
+aiosignal==1.4.0
+attrs==26.1.0
+frozenlist==1.8.0
+multidict==6.8.0
+propcache==0.5.4
+yarl==1.25.1
+idna==3.20
+typing_extensions==4.16.0

@@ -1,0 +1,173 @@
+﻿Specyfikacja bota Discord
+Payout i respawn siteów oraz statystyki ukończeń
+Dokument dla programisty • Wersja 1.1 • 18 września 2026
+Zaimplementować cykl: ukończenie site’a → payout → /timer z godziną payoutu i systemem ukończenia → 23 minuty → @everyone, aby sprawdzić Kino, Niarja i Archee → ukończenie nowego site’a → kolejny wpis. Nowy site może pojawić się w dowolnym z trzech systemów; bot nie przewiduje jego lokalizacji.
+1 Zakres i ustalenia wdrożeniowe
+Wersja uwzględnia korektę celu timera z opisu projektu 1.3. time to godzina payoutu w EVE Time (UTC), a system to miejsce ukończenia poprzedniego site’a. Domyślny stos: jedna instancja, SQLite i plik konfiguracji serwerów. Dokument po polsku; cały interfejs bota po angielsku.
+Komenda
+Parametry
+Efekt
+/timer
+time oraz systemOba wymagane
+Zapisuje ukończenie i payout; planuje ping @everyone.
+/stats
+Brak
+Ukończenia w systemach i suma.
+/rank
+page — opcjonalnyLiczba całkowita od 1
+Ranking autorów, 10 osób na stronę. Domyślnie strona 1.
+
+System wybierany z choices: Kino, Niarja, Archee; wartości wewnętrzne: kino, niarja, archee. /timer time:20:20 system:Kino zgłasza ukończenie w Kino z payoutem o 20:20. Przewidywany respawn i ping wypadają o 20:43, ale niekoniecznie w Kino.
+2 Interpretacja godziny
+time jest godziną payoutu HH:MM w EVE Time (UTC), 00:00–23:59. Wymagać dwóch cyfr godzin i minut; usuwać skrajne spacje. Nie przyjmować czasu względnego. Przy dokładności do minuty obliczenia przyjmują sekundy 00.
+Jako now przyjąć czas utworzenia interakcji w UTC. Zbudować payout_at z jej daty i godziny payoutu. Jeśli jest późniejszy od now, odjąć jeden dzień. Jest to ostatnie wystąpienie podanej godziny, także po północy.
+Obliczyć due_at = payout_at + 1380 sekund. Przy due_at ≤ now odrzucić zgłoszenie bez zapisu, zgodnie z dotychczasową regułą. Przykład: o 00:02 payout 23:50 odnosi się do wczoraj, respawn do dzisiaj 00:13. Payout 20:20 zgłoszony o 20:25 daje termin 20:43.
+UTC jest stałe i odpowiada EVE Time. Nie używać czasu lokalnego komputera, Europe/Warsaw ani czasu wywołania komendy jako początku 23 minut.
+3 Obsługa komend i odpowiedzi
+Komendy działają wyłącznie w skonfigurowanych serwerach, w zwykłych kanałach tekstowych, do których bot ma dostęp. DM, wątki i kanały forum są poza zakresem. Dostęp użytkowników można ograniczać standardowymi ustawieniami komend Discorda. Nie dodawać własnego systemu ról dla autorów timerów.
+Przebieg komendy timer
+Zweryfikować kontekst, parametry i prawo bota do wysyłania wiadomości na kanale. Przed dłuższą operacją potwierdzić interakcję przez defer; Discord wymaga pierwszej odpowiedzi w ciągu 3 sekund [1]. W jednej transakcji zapisać zgłoszenie ze statusem pending. Dopiero po zatwierdzeniu transakcji wyświetlić sukces. Publiczna odpowiedź nie pinguje nikogo.
+Przykład odpowiedzi: „Completion recorded — Kino | Payout: 2026-09-18 20:20 EVE Time (UTC) | Expected respawn: 2026-09-18 20:43 EVE Time (UTC) | Remaining: <t:UNIX:R> | Completed sites: +1 | Timer ID: ID”. Zastąpić UNIX i ID wartościami. Autor jako zwykły tekst; brak pingu przy zapisie.
+Jeden wpis oznacza jedno zgłoszone ukończenie. Jedna osoba zgłasza site w imieniu grupy; nie przypisywać punktu każdemu uczestnikowi payoutu. Nowe interaction_id daje nowy wpis, nawet przy tych samych parametrach. Powtórzone ID nie zwiększa licznika. Bot nie weryfikuje payoutu przez API.
+Wyniki stats i rank
+/stats: „Reported completions — All time”. Pokazać Kino, Niarja, Archee oraz Total, również z zerami. Grupować po systemie ukończenia, nie lokalizacji respawnu. Liczyć wszystkie przyjęte wpisy serwera bez względu na status pingu. Ping i samo upłynięcie czasu nie dodają ukończenia.
+/rank: „Completion reports leaderboard — All time”. Liczyć wpisy według author_id na bieżącym serwerze, malejąco. Remisy: kolejność po author_id i miejsca 1, 1, 3; miejsca globalne między stronami. Stopka „Page 1 of 3”. Nie pingować. Aktualna nazwa z cache, potem zapisana nazwa, potem „User ID”. Zmiana nicku nie zeruje wyniku.
+Komunikaty błędów
+Sytuacja
+Odpowiedź prywatna po angielsku
+Niepoprawna godzina
+Invalid payout time. Use HH:MM in EVE Time (UTC).
+Termin już minął
+The respawn time has already passed. No completion was recorded.
+Zły system
+Choose Kino, Niarja or Archee.
+Brak wpisów w rankingu
+No sites recorded yet.
+Strona poza zakresem
+Invalid page. Choose a page between 1 and N.
+Zapis nie powiódł się
+Could not save the timer. No site was recorded.
+
+4 Ping everyone i szukanie respawnu
+Ukończony site
+Ping po 23 min
+Systemy do sprawdzenia
+Kino
+@everyone
+Kino, Niarja i Archee
+Niarja
+@everyone
+Kino, Niarja i Archee
+Archee
+@everyone
+Kino, Niarja i Archee
+
+Wszystkie timery prowadzą do tego samego działania: @everyone ma sprawdzić Kino, Niarja i Archee. Nie konfigurować role_id systemów i nie pingować @Kino, @Niarja ani @Archee. System z komendy opisuje poprzednie ukończenie, nie cel wyszukiwania.
+Przy due_at wysłać na channel_id zgłoszenia: „@everyone — A new site is expected. Check Kino, Niarja and Archee! After completing it, submit /timer with the payout time in EVE Time (UTC) and the completion system. Timer ID: ID”. To sygnał do sprawdzenia, nie potwierdzenie wykrycia site’a.
+W przypomnieniu użyć dosłownego @everyone oraz allowed_mentions: parse=["everyone"], users=[], roles=[], replied_user=false [2]. Treść generować z szablonu, bez nicków i tekstu użytkownika. Nie dodawać @here. We wszystkich pozostałych odpowiedziach całkowicie wyłączyć wzmianki.
+Wymagane Mention Everyone na kanale [3], bez Administrator. Przed zapisem sprawdzić możliwość pingu; przy jej braku odrzucić wpis z błędem. Jeżeli prawo zniknie po zapisie, wysłać informację bez wzmianki, zapisać ostrzeżenie i zachować statystyki. Ustawienia odbiorców mogą wyciszać powiadomienia.
+Kolejka i restart
+Co 5 sekund sprawdzać w bazie pending i retry z osiągniętymi due_at i next_attempt_at; jeden pracownik kolejki. Po restarcie ten sam przegląd. Nie używać wyłącznie sleep w pamięci. Nie tworzyć cyklicznego pingu co 23 minuty: następny timer wymaga nowego zgłoszenia po kolejnym payoucie.
+Przed próbą wysyłki zapisać status sending. Po sukcesie zapisać sent, sent_at i message_id. W normalnej pracy celować w wysyłkę do 10 sekund po terminie; awarie i limity Discorda mogą wydłużyć opóźnienie.
+Jeżeli opóźnienie przekroczyło 5 minut, ustawić skipped_expired i nie pingować. Od 30 sekund do 5 minut dołączyć „Delayed reminder”. Site nadal liczy się w obu zestawieniach.
+Błędy przejściowe: ponawiać po 5, 15 i 30 sekundach, potem co 60 sekund, tylko w pięciominutowym oknie. Przy 429 respektować retry_after. Brak kanału lub trwałe 403: failed i wpis błędu, bez pętli ponowień.
+Przy restarcie zastane sending oznaczyć delivery_unknown i nie ponawiać automatycznie. Tak samo traktować niejednoznaczny timeout po wysłaniu żądania. Ogranicza to podwójne pingi kosztem możliwego pominięcia przypomnienia; log musi wskazywać Timer ID.
+Przypomnienia wysyłać jako nowe wiadomości bota. Token interakcji działa 15 minut, więc nie służy do wysyłki po 23 minutach [1]. Gwarancja jednokrotnego zapisu statystyk nie oznacza gwarancji dokładnie jednej dostawy przez sieć.
+5 Model danych i spójność
+Zalecany wariant: Python z discord.py oraz SQLite. Dopuszczalny inny stos zachowujący cały kontrakt. Baza ma być plikiem na trwałym wolumenie. Identyfikatory Discorda przechowywać jako tekst, daty jako znaczniki UNIX UTC. Nie tworzyć oddzielnych liczników wymagających synchronizacji ze zgłoszeniami.
+Pole tabeli timers
+Typ i reguła
+id
+INTEGER PRIMARY KEY — identyfikator timera
+interaction_id
+TEXT NOT NULL UNIQUE — ochrona przed duplikatem
+guild_id, channel_id
+TEXT NOT NULL — serwer i kanał zgłoszenia
+author_id, author_name
+TEXT NOT NULL — ID autora i zapamiętana nazwa
+system
+TEXT NOT NULL; system ukończenia: kino, niarja, archee
+payout_at, due_at, created_at
+INTEGER NOT NULL; due_at = payout_at + 1380
+status
+TEXT NOT NULL, domyślnie pending
+attempt_count
+INTEGER NOT NULL DEFAULT 0
+next_attempt_at
+INTEGER NOT NULL; początkowo due_at
+sent_at, message_id
+INTEGER oraz TEXT; NULL do potwierdzonej wysyłki
+last_error
+TEXT NULL; krótki opis bez tokenów
+
+Dozwolone statusy: pending, sending, retry, sent, skipped_expired, failed, delivery_unknown. Rekordy nie znikają po wysłaniu lub nieudanej dostawie. /stats i /rank agregują wszystkie rekordy timers, zawsze z warunkiem guild_id bieżącej interakcji.
+Indeksy i transakcje
+Utworzyć indeksy na (guild_id, system), (guild_id, author_id) i (status, next_attempt_at, due_at). Insert ma być atomowy, z obsługą konfliktu interaction_id. Do ochrony przed równoległą obsługą kolejki stosować warunkową zmianę statusu w transakcji i sprawdzać liczbę zmienionych rekordów.
+Przy pierwszym uruchomieniu automatycznie utworzyć schemat; następne starty nie mogą usuwać danych. Dostarczyć wersjonowanie migracji. Ustawić timeout na zajętą bazę, nie blokować pętli zdarzeń długimi zapytaniami. Sumy systemów i użytkowników muszą zawsze odpowiadać liczbie przyjętych zgłoszeń danego serwera.
+Nazwy i izolacja serwerów
+Nazwy użytkowników wyświetlać po bezpiecznym escapowaniu formatowania i z wyłączonymi wzmiankami. Nick jest etykietą, nigdy kluczem rankingu. Nie pokazywać danych innych serwerów ani podawać do zapytań SQL niezweryfikowanych fragmentów tekstu; parametry zapytań mają być wiązane.
+6 Konfiguracja i uruchomienie 24 na 7
+Program ma działać na zewnętrznym VPS lub hostingu stałych procesów. Komputer właściciela może być wyłączony. Wariant bazowy nie wymaga domeny, serwera WWW ani dostępu do API EVE. Hosting musi mieć połączenie z Discordem i trwały dysk, bez usypiania procesu.
+Ustawienie
+Znaczenie
+DISCORD_TOKEN
+Sekret środowiskowy bota; nigdy w repozytorium.
+DATABASE_PATH
+Ścieżka na trwałym wolumenie, np. /data/bot.sqlite3.
+CONFIG_PATH
+Plik listy obsługiwanych serwerów Discord.
+LOG_LEVEL
+Domyślnie INFO; bez tokenów i treści sekretów.
+Stałe aplikacji
+UTC; 1380 s timera; 300 s tolerancji; 5 s cyklu; 10 osób na stronę.
+
+Plik config.example.json zawiera guild_ids — listę ID serwerów, na których bot działa. Nie ma mapowania ról systemów. Użyć placeholderów zamiast prawdziwych ID; zmiany stosować po restarcie. Kanał przypomnienia jest kanałem przyjętego /timer.
+Uprawnienia Discorda
+Instalacja z bot i applications.commands. Uprawnienia: View Channel, Send Messages, Mention Everyone; przy embedach także Embed Links. Nie wymagać Administrator, Manage Roles ani treści zwykłych wiadomości. Rejestrować komendy przy wdrożeniu lub zmianie ich schematu, nie przy każdym reconnect.
+Na starcie sprawdzić token, bazę i konfigurację. Brak tokena lub bazy zatrzymuje aplikację. Błędny kontekst: „Use this command in a configured server text channel.” Brak uprawnień do wysyłki lub pingu: „I need Send Messages and Mention Everyone in this channel. No completion was recorded.”
+Utrzymanie i kopie zapasowe
+Dostarczyć Dockerfile i compose.yaml z restart: unless-stopped, trwałym wolumenem i jedną repliką. Alternatywnie można dostarczyć kompletną usługę systemd zamiast Dockera.
+Co dobę tworzyć spójną kopię bazy przez SQLite Backup API albo przy zatrzymanym procesie. Nie kopiować samego aktywnego pliku przy włączonym WAL. Utrzymywać co najmniej 7 kopii, w tym kopię poza maszyną.
+Logować start, rozłączenia, błędy, Timer ID i wyniki dostawy. Logi rotować. Zatrzymanie procesu ma zamykać bazę i połączenie; reconnect nie może tworzyć drugiego pracownika kolejki.
+Po odtworzeniu starego backupu mogą wrócić już wysłane timery. W instrukcji przywracania wymagać oznaczenia rekordów z terminem przed przywróceniem jako pominięte, zanim pracownik zacznie wysyłać.
+Wycena wykonawcy powinna oddzielać jednorazowe napisanie i wdrożenie od abonamentu hostingu. Nie wymaga się konkretnego dostawcy ani płatnego serwisu bazodanowego.
+7 Testy odbiorowe i przekazanie
+Testy z kontrolowanym zegarem i atrapą API Discorda, następnie test na serwerze testowym. Poniższe godziny są w EVE Time (UTC). Zweryfikować cały cykl od payoutu do kolejnego ukończenia w innym systemie.
+Test
+Oczekiwany wynik
+Payout 20:20 w Kino
++1 Kino i autor; @everyone o 20:43, sprawdzić trzy systemy.
+Payout 20:20 wpisany o 20:25
+Respawn i ping 20:43, pozostało 18 minut.
+23:50 wpisane o 00:02
+Start wczoraj, termin dzisiaj 00:13.
+20:10 wpisane o 20:33
+Odrzucenie bez zmiany statystyk.
+24:00, 9:05, tekst, inny system
+Błąd po angielsku; brak zapisu.
+Powtórzone interaction_id
+Dokładnie jeden rekord, jeden punkt autora.
+Nowe ID z tym samym czasem
+Nowe zgłoszenie; kolejne +1.
+Dwa serwery i zmiana nicku
+Wyniki rozdzielone; wynik autora zachowany.
+Rankingi 12 osób i remis
+Dwie strony; miejsca np. 1, 1, 3; brak pingów.
+Po pingu ukończenie w Archee
+Nowy wpis: +1 Archee i autor; kolejny ping od nowego payoutu.
+Restart przed terminem
+Timer wraca z bazy; licznik bez zmian.
+Restart 2 i 6 minut po terminie
+2 min: opóźniony ping; 6 min: pominięcie.
+Brak prawa do pingu lub kanału
+Przed wpisem: odrzucenie; po wpisie: dane pozostają.
+Niepewna dostawa i awaria bazy
+delivery_unknown bez ponownego pingu; brak zapisu nie daje punktu.
+
+Co programista ma przekazać
+Przekazać źródła, wersje zależności, migracje, przykładową konfigurację bez sekretów, uruchomienie oraz README. Instrukcja: aplikacja Discord, uprawnienia do @everyone, serwery, wdrożenie, restart, logi, aktualizacja i backup. Dołączyć test payout 20:20 w Kino → ping 20:43 → ukończenie w Archee i nowy timer.
+Poza zakresem: automatyczne wykrywanie siteów, API EVE, reset i edycja zgłoszeń, panel WWW, nadawanie ról użytkownikom, statystyki dzienne i obsługa wielu stref czasu. Projekt uznaje się za gotowy po przejściu testów i potwierdzeniu działania na hostingu przy wyłączonym komputerze właściciela.
+Dokumentacja techniczna
+[1] Discord — Receiving and Responding to Interactions: https://docs.discord.com/developers/interactions/receiving-and-responding
+[2] Discord — Message Resource oraz Allowed Mentions: https://docs.discord.com/developers/resources/message
+[3] Discord — Permissions: https://docs.discord.com/developers/topics/permissions
