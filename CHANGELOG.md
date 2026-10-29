@@ -2,6 +2,10 @@
 
 All notable changes to Wabot. Adding a new version at the top publishes a GitHub release for it.
 
+## [Unreleased]
+
+- CI: every push runs ruff and the full test suite on Windows with Python 3.11 and 3.12.
+
 ## [1.10.0] - 2026-10-27
 
 - Market analysis: 30-day verdict per item from ESI price history.
