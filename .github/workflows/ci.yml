@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+# Read-only token: CI only needs to check out the code.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: windows-latest

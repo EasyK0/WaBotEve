@@ -209,7 +209,7 @@ def test_env_file_is_parsed_without_execution_and_id_is_not_token(tmp_path):
     source = tmp_path / ".env"
     source.write_text(f'DISCORD_TOKEN="{TOKEN}"\nOTHER=ignored\n', encoding="utf-8")
     assert read_env_token(source) == TOKEN
-    source.write_text("DISCORD_TOKEN=1551042428067127336", encoding="utf-8")
+    source.write_text("DISCORD_TOKEN=1234567890123456789", encoding="utf-8")
     with pytest.raises(ValueError, match="application ID"):
         read_env_token(source)
 

@@ -3,8 +3,8 @@
     "YOUR_DISCORD_SERVER_ID"
   ],
   "market": {
-    "enabled": true,
-    "channel_id": "1550625871247704146",
+    "enabled": false,
+    "channel_id": null,
     "interval_minutes": 60,
     "region_id": 10000002,
     "jita_location_id": 60003760,
