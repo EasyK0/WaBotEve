@@ -2,7 +2,7 @@
 
 Gotowy instalator: `dist/windows/WabotSetup.exe`. Przenieś ten plik na drugi komputer z Windows 10/11 x64 i uruchom. Python i wszystkie biblioteki są dołączone; instalacja nie pobiera zależności i nie wymaga administratora. Do pracy bota potrzebne jest połączenie z Internetem.
 
-Instalator tej kopii zawiera obecny `config.json` oraz spójną kopię bazy z chwili budowania. Zachowuje ID serwera, kanał `1550625871247704146`, raporty co 60 minut, osobne kolorowe wiadomości Datacasterów i pozostałych przedmiotów. Przy ponownej instalacji pozostawia istniejące ustawienia, bazę i token. Odinstalowanie usuwa program i skróty, ale zachowuje dane w `%LOCALAPPDATA%\Wabot`.
+Instalator tej kopii zawiera obecny `config.json` oraz spójną kopię bazy z chwili budowania. Zachowuje ID serwera, kanał rynku, raporty co 60 minut, osobne kolorowe wiadomości Datacasterów i pozostałych przedmiotów. Przy ponownej instalacji pozostawia istniejące ustawienia, bazę i token. Odinstalowanie usuwa program i skróty, ale zachowuje dane w `%LOCALAPPDATA%\Wabot`.
 
 ## Pierwsze uruchomienie
 

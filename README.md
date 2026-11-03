@@ -42,18 +42,18 @@ Użytkownicy mogą wyciszyć `@everyone` po swojej stronie. Bot nie omija tych u
 
 Zgodnie z późniejszą decyzją właściciela **Jita 4-4 i Perimeter tworzą jeden wspólny rynek w raporcie**. Jest to zmiana względem pierwotnej specyfikacji wymagającej osobnych embedów. Bot pobiera wszystkie strony zleceń The Forge, ale uwzględnia wyłącznie Jita 4-4 (`60003760`) oraz lokalizacje z systemu Perimeter (`30000144`) zwrócone przez publiczne ESI.
 
-Co godzinę powstaje nowy raport na kanale **1550625871247704146**. Datacastery trafiają do osobnej wiadomości, a pozostałe przedmioty do kolejnej. Dla sześciu przedmiotów raport podaje wspólne najlepsze buy/sell, pozostały wolumen przy tych cenach i spread. Datacaster ma dodatkowo bezpieczny wolumen od **500 000 ISK włącznie**, wartość brutto, średnią i pierwszy poziom poniżej progu. Łączny wolumen obejmuje różne miejsca: raport pokazuje rozkład po lokalizacjach, a realizacja całości może wymagać transportu. Nie wykonuje sprzedaży ani nie składa zleceń.
+Co godzinę powstaje nowy raport na skonfigurowanym kanale (`market.channel_id`). Datacastery trafiają do osobnej wiadomości, a pozostałe przedmioty do kolejnej. Dla sześciu przedmiotów raport podaje wspólne najlepsze buy/sell, pozostały wolumen przy tych cenach i spread. Datacaster ma dodatkowo bezpieczny wolumen od **500 000 ISK włącznie**, wartość brutto, średnią i pierwszy poziom poniżej progu. Łączny wolumen obejmuje różne miejsca: raport pokazuje rozkład po lokalizacjach, a realizacja całości może wymagać transportu. Nie wykonuje sprzedaży ani nie składa zleceń.
 
 `SAFE` oznacza dostępny wolumen powyżej progu; poniżej 5000 sztuk pojawia się `LOW DEPTH`, brak kwalifikujących buy orderów daje `STOP`. `Cached` zawiera wiek danych; po 30 minutach raport pokazuje `DATA ERROR`. Błąd jednego przedmiotu pozostawia wyniki pozostałych. Raport nie pinguje użytkowników ani ról. W razie przekroczenia limitów Discorda każda grupa jest dzielona na dodatkowe wiadomości ze wspólnym czasem aktualizacji.
 
 Datacastery mają pasek i znacznik statusu: 🟢 `SAFE`, 🟠 `LOW DEPTH`, 🔴 `STOP`, ⚪ `DATA ERROR`. Raport pozostałych przedmiotów ma fioletowy pasek, a każda pozycja własny kolorowy znacznik. Ceny kupna oznacza 🔵, a sprzedaży 🟣. Przy błędzie danych pasek raportu staje się szary; nazwy statusów pozostają widoczne obok kolorów.
 
-Nowa konfiguracja przykładowa ma już włączony moduł i ustawiony kanał. W istniejącym `config.json` zachowaj `guild_ids` i dodaj:
+W konfiguracji przykładowej moduł jest wyłączony. Aby go włączyć, w `config.json` zachowaj `guild_ids` i dodaj (z ID własnego kanału zamiast `YOUR_MARKET_CHANNEL_ID`):
 
 ```json
 "market": {
   "enabled": true,
-  "channel_id": "1550625871247704146",
+  "channel_id": "YOUR_MARKET_CHANNEL_ID",
   "interval_minutes": 60,
   "datacaster_min_buy_price": "500000",
   "datacaster_low_depth_units": 5000

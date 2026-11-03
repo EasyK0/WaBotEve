@@ -70,7 +70,7 @@ def test_environment_overrides_json_and_preserves_decimal_precision():
     settings = parse(
         {"enabled": False, "channel_id": "1", "interval_minutes": 10},
         MARKET_REPORT_ENABLED="TRUE",
-        MARKET_CHANNEL_ID="1550625871247704146",
+        MARKET_CHANNEL_ID="1234567890123456789",
         MARKET_INTERVAL_MINUTES="2.5",
         MARKET_REGION_ID="10000002",
         JITA_LOCATION_ID="60003760",
@@ -80,7 +80,7 @@ def test_environment_overrides_json_and_preserves_decimal_precision():
         MARKET_REQUEST_TIMEOUT_SECONDS="3.5",
     )
     assert settings.enabled
-    assert settings.channel_id == "1550625871247704146"
+    assert settings.channel_id == "1234567890123456789"
     assert settings.interval_minutes == 2.5
     assert settings.request_timeout_seconds == 3.5
     assert settings.datacaster_low_depth_units == 125
@@ -227,12 +227,12 @@ def test_custom_thresholds_apply_and_datacaster_uses_stricter_threshold():
     ) == Decimal("700000")
 
 
-def test_example_preconfigures_requested_channel(config_environment):
+def test_example_ships_without_a_private_channel(config_environment):
     example = Path(__file__).parents[1] / "config.example.json"
     config = json.loads(example.read_text(encoding="utf-8"))
     config["guild_ids"] = ["123"]
     config_environment.write_text(json.dumps(config), encoding="utf-8")
     settings = Settings.from_env(require_token=False)
-    assert settings.market.enabled
-    assert settings.market.channel_id == "1550625871247704146"
+    assert not settings.market.enabled
+    assert settings.market.channel_id is None
     assert settings.market.items == DEFAULT_MARKET_ITEMS
