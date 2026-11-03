@@ -1,192 +1,117 @@
-# Wabot — payout i respawn site’ów w EVE
+# Wabot
 
-Wersja 1.6: [killmaile co 30 sekund, przypisania system → kanał, test wiadomości na zapisanych kanałach](docs/pochven-and-messages.md). Usunięto stary tryb alertów zbiorczych i progi strat.
+[![CI](https://github.com/EasyK0/WaBotEve/actions/workflows/ci.yml/badge.svg)](https://github.com/EasyK0/WaBotEve/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/EasyK0/WaBotEve)](https://github.com/EasyK0/WaBotEve/releases)
+[![Python 3.11 | 3.12](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+A Discord bot for EVE Online groups that run sites in Pochven. It schedules site-respawn reminders, keeps completion leaderboards, posts Jita/Perimeter market reports with a 30-day sell-timing verdict, and streams killmails from Pochven and chosen alliances. It runs 24/7 on a VPS with Docker, or on a Windows PC through a desktop launcher.
 
-Bot Discord zgodny ze specyfikacją 1.1 z 18.09.2026, rozszerzony o monitoring rynku Jita i Perimeter. Python, discord.py i SQLite; jedna instancja na VPS lub hostingu stałych procesów. Interfejs bota jest po angielsku. Domena i serwer WWW nie są potrzebne. Moduł rynku korzysta z publicznego ESI, bez logowania do EVE.
+![Market analysis page of the desktop launcher](docs/images/market-analysis.png)
+<sub>Desktop launcher, Market analysis page. Screenshots use demo data.</sub>
 
-## Działanie
+## Features
 
-| Komenda | Wynik |
-| --- | --- |
-| `/timer time:20:20 system:Kino` | Zapisuje jedno ukończenie w Kino i planuje przypomnienie na 20:43 UTC. |
-| `/stats` | Liczba przyjętych zgłoszeń w Kino, Niarja i Archee oraz suma na bieżącym serwerze. |
-| `/rank page:1` | Ranking autorów na bieżącym serwerze, 10 osób na stronie, miejsca przy remisach 1, 1, 3. |
-| `/market-now` | Administrator publikuje pełny raport Jita + Perimeter na skonfigurowanym kanale. |
-| `/market-status` | Administrator sprawdza świeżość danych, ostatni raport i termin następnego. |
+**Respawn timers**
+- `/timer time:20:20 system:Kino` records a completed site and schedules an `@everyone` reminder 23 minutes after the payout. Payout times are in EVE time (UTC), and a payout typed just after midnight correctly counts as the previous day.
+- `/stats` and `/rank` show completions per system and a paginated leaderboard per server, with standard competition ranking (1, 1, 3).
+- Reminders survive restarts and are never sent twice (see [Reliability](#reliability)).
 
-Komendy rynku są rejestrowane po włączeniu modułu w konfiguracji i wykonaniu `sync`.
+**Market**
+- Hourly report for watched items, combining Jita 4-4 and Perimeter into one market: best buy/sell, depth at those prices, spread, and a *safe volume* above a price floor, with 🟢 SAFE / 🟠 LOW DEPTH / 🔴 STOP status.
+- `/market-analysis` and 📈 buttons under each report: a 30-day verdict from ESI price history (where today's price sits in the month's range, trend, best weekday to sell).
+- `/market-now` and `/market-status` let admins post a report on demand and check that the data is fresh.
+- Item search over the full CCP static data export (27,000+ types). Works offline and updates from CCP on request.
 
-`time` to czas **payoutu**, w formacie HH:MM, w EVE Time (UTC). Bot wyznacza ostatnie wystąpienie tej godziny względem czasu utworzenia interakcji. O 00:02 wpis 23:50 odnosi się do poprzedniego dnia i daje termin 00:13. Zgłoszenie z terminem już osiągniętym jest odrzucane.
+**PvP**
+- Killmails from Kino, Niarja, Archee or all of Pochven, polled every 30 s from zKillboard's R2Z2 feed, each system routed to its own channel.
+- Alliance kills and losses from anywhere in EVE as rich cards, with an optional `@here` above a set ISK value.
 
-Jeden autor zgłasza jedno ukończenie w imieniu grupy. Nowe wywołanie komendy, nawet z identycznymi parametrami, daje kolejny punkt. Powtórzona dostawa tego samego `interaction_id` daje dokładnie jeden rekord. Zmiana nicku nie zmienia wyniku.
+**Operations**
+- One bot serves many Discord servers, and each feature can be switched on per server.
+- Every message text is editable, with a live preview.
+- Desktop launcher (Tkinter) with start/stop, logs, settings, statistics corrections and one-click data transfer to another PC.
 
-Po 23 minutach od payoutu bot publikuje nową wiadomość:
+| | |
+|---|---|
+| ![Market settings](docs/images/market.png) | ![PvP settings](docs/images/pvp.png) |
 
-> @everyone — A new site is expected. Check Kino, Niarja and Archee! After completing it, submit /timer with the payout time in EVE Time (UTC) and the completion system. Timer ID: ID
+## Architecture
 
-Bot nie przewiduje lokalizacji nowego site’a. Kolejny timer wymaga kolejnego zgłoszenia. Potwierdzenia, błędy i rankingi nie pingują użytkowników ani ról.
-
-## Aplikacja Discord
-
-1. Utwórz aplikację i bota w [Discord Developer Portal](https://discord.com/developers/applications). Skopiuj token do prywatnej konfiguracji środowiska. Nie publikuj go w repozytorium ani w rozmowach.
-2. Pozostaw wyłączone wszystkie **Privileged Gateway Intents**. Bot nie odczytuje zwykłych wiadomości ani pełnej listy członków.
-3. W OAuth2 URL Generator wybierz `bot` i `applications.commands`. Wybierz uprawnienia **View Channel**, **Send Messages**, **Mention Everyone** oraz **Embed Links** dla raportów rynku. Wartość bitowa: `134237184`. Bot nie potrzebuje uprawnienia Administrator.
-4. Zainstaluj bota na swoim serwerze. W ustawieniach Discorda włącz Developer Mode i skopiuj ID serwera do `config.json`. Dodaj wszystkie obsługiwane serwery do `guild_ids` jako ciągi znaków.
-5. Sprawdź nadpisania uprawnień na kanałach: bot musi widzieć zwykły kanał tekstowy, wysyłać wiadomości i mieć Mention Everyone. DM, wątki, forum i kanały ogłoszeń są odrzucane.
-6. Dostęp użytkowników do komend ograniczaj standardowymi ustawieniami integracji Discorda. Bot nie ma własnego systemu ról.
-
-Użytkownicy mogą wyciszyć `@everyone` po swojej stronie. Bot nie omija tych ustawień.
-
-## Rynek Jita + Perimeter
-
-Zgodnie z późniejszą decyzją właściciela **Jita 4-4 i Perimeter tworzą jeden wspólny rynek w raporcie**. Jest to zmiana względem pierwotnej specyfikacji wymagającej osobnych embedów. Bot pobiera wszystkie strony zleceń The Forge, ale uwzględnia wyłącznie Jita 4-4 (`60003760`) oraz lokalizacje z systemu Perimeter (`30000144`) zwrócone przez publiczne ESI.
-
-Co godzinę powstaje nowy raport na skonfigurowanym kanale (`market.channel_id`). Datacastery trafiają do osobnej wiadomości, a pozostałe przedmioty do kolejnej. Dla sześciu przedmiotów raport podaje wspólne najlepsze buy/sell, pozostały wolumen przy tych cenach i spread. Datacaster ma dodatkowo bezpieczny wolumen od **500 000 ISK włącznie**, wartość brutto, średnią i pierwszy poziom poniżej progu. Łączny wolumen obejmuje różne miejsca: raport pokazuje rozkład po lokalizacjach, a realizacja całości może wymagać transportu. Nie wykonuje sprzedaży ani nie składa zleceń.
-
-`SAFE` oznacza dostępny wolumen powyżej progu; poniżej 5000 sztuk pojawia się `LOW DEPTH`, brak kwalifikujących buy orderów daje `STOP`. `Cached` zawiera wiek danych; po 30 minutach raport pokazuje `DATA ERROR`. Błąd jednego przedmiotu pozostawia wyniki pozostałych. Raport nie pinguje użytkowników ani ról. W razie przekroczenia limitów Discorda każda grupa jest dzielona na dodatkowe wiadomości ze wspólnym czasem aktualizacji.
-
-Datacastery mają pasek i znacznik statusu: 🟢 `SAFE`, 🟠 `LOW DEPTH`, 🔴 `STOP`, ⚪ `DATA ERROR`. Raport pozostałych przedmiotów ma fioletowy pasek, a każda pozycja własny kolorowy znacznik. Ceny kupna oznacza 🔵, a sprzedaży 🟣. Przy błędzie danych pasek raportu staje się szary; nazwy statusów pozostają widoczne obok kolorów.
-
-W konfiguracji przykładowej moduł jest wyłączony. Aby go włączyć, w `config.json` zachowaj `guild_ids` i dodaj (z ID własnego kanału zamiast `YOUR_MARKET_CHANNEL_ID`):
-
-```json
-"market": {
-  "enabled": true,
-  "channel_id": "YOUR_MARKET_CHANNEL_ID",
-  "interval_minutes": 60,
-  "datacaster_min_buy_price": "500000",
-  "datacaster_low_depth_units": 5000
-}
+```
+Discord gateway ──► commands.py ──► repository.py ──► SQLite (WAL, versioned migrations)
+                                                         │
+                         queue.py  (single worker, 5 s) ◄┘──► transport.py ──► Discord REST
+                         market.py (hourly)  ──► market_esi.py ──► ESI (ETag/Expires cache, paging)
+                         pvp.py    (30 s)    ──► pvp_feed.py   ──► zKillboard R2Z2
+                         backup.py (24 h)    ──► SQLite Backup API ──► local + off-site copies
 ```
 
-Powyżej jest fragment obiektu JSON: dodaj przecinek po istniejącym polu `guild_ids`. Pełny poprawny plik i lista sześciu przedmiotów z oficjalnymi `type_id` znajdują się w [config.example.json](config.example.json). Bez pola `market` istniejąca konfiguracja zachowuje dotychczasowe działanie. Zmienne z [.env.example](.env.example), np. `MARKET_REPORT_ENABLED` i `MARKET_CHANNEL_ID`, mają pierwszeństwo przed JSON. Nazwy przedmiotów są weryfikowane przy pierwszym odczycie z ESI; błędna nazwa/ID daje `Data unavailable`. Dodawanie pozycji nie wymaga zmiany algorytmu.
+- **Python 3.11+, asyncio**, `discord.py`, `aiohttp` and `aiosqlite`. Every dependency is pinned, including transitive ones.
+- **No privileged gateway intents.** The bot never reads normal messages or member lists. Replies, reports and leaderboards are sent with `allowed_mentions=none`, so user names can't smuggle in pings. Only the reminder and the configured PvP pings may mention anyone.
+- **Least-privilege permissions:** View Channel, Send Messages, Mention Everyone, Embed Links (`134237184`). No Administrator.
 
-Kanał musi należeć do serwera z `guild_ids`, być zwykłym kanałem tekstowym i udostępniać botowi **View Channel**, **Send Messages**, **Embed Links**. Po zmianie konfiguracji wykonaj `sync` i zrestartuj bota. Pierwszy automatyczny raport powstanie po gotowości połączenia Discord. `/market-now` nie przesuwa harmonogramu; równoległe wywołanie podczas trwającego raportu jest pomijane.
+## Reliability
 
-Dane i nazwy struktur są ograniczone do publicznego ESI. Endpoint regionalny **nie obejmuje pełnego rynku struktur graczy**: udostępnia ich zlecenia z zasięgiem, ale pełne dane wymagają osobnego endpointu, logowania EVE SSO i dostępu do struktury. Raport zawiera informację o tym ograniczeniu. Zobacz [oficjalny opis rynków struktur](https://docs.esi.evetech.net/docs/scenarios/structure_markets.html). Niedostępna nazwa struktury jest wyświetlana jako `Structure <id>`. Cache ostatnich poprawnych odczytów pozostaje w pamięci procesu; po restarcie potrzebny jest nowy odczyt. Moduł respektuje [cache i ETag ESI](https://developers.eveonline.com/docs/services/esi/best-practices/), [paginację](https://developers.eveonline.com/docs/services/esi/pagination/x-pages/) i [limity żądań](https://developers.eveonline.com/docs/services/esi/rate-limiting/).
+The bot is built to never send the same `@everyone` twice, even if it crashes or the network fails.
 
-## Wdrożenie Docker na VPS
+- **Idempotent writes.** Each `/timer` is stored in one transaction keyed by the Discord `interaction_id`, so a re-delivered interaction can't create a second record.
+- **Durable queue.** Reminders live in SQLite. Before each request, the record moves atomically from `pending` to `sending`, and on success to `sent` with the message ID.
+- **At-most-once delivery.** A timeout after the request has started becomes `delivery_unknown` and is not retried automatically. So do `sending` records found at startup. Transient errors retry after 5/15/30/60 s within a five-minute window, and HTTP 429 honours `retry_after`.
+- **Late reminders** are labelled `Delayed reminder` after 30 s and skipped after 5 minutes, so nobody gets pinged for a site that is long gone.
+- **Single instance.** A file lock stops two processes from using one database.
+- **Backups.** Consistent snapshots through the SQLite Backup API at startup and every 24 h, keeping 7, with optional copies to an off-site mount. `restore` checks integrity and schema version, and marks old reminders as skipped before the queue starts.
 
-Wymagany jest Docker z Compose, trwały dysk i stałe połączenie z Discordem. Hosting nie może usypiać procesu. Wszystkie poniższe polecenia uruchamiaj w katalogu projektu **na VPS**, aby bot działał również po wyłączeniu twojego komputera.
+## Deploying with Docker
+
+Needs Docker with Compose and a host that keeps processes running.
 
 ```sh
-cp config.example.json config.json
-cp .env.example .env
-chmod 600 .env
-```
-
-W `config.json` zastąp placeholder rzeczywistym ID serwera. W `.env` wpisz prawdziwy `DISCORD_TOKEN`. Compose wczytuje `.env`; pliki z sekretami są wyłączone z kontekstu budowania obrazu i z Git.
-
-```sh
+cp config.example.json config.json   # put your server ID in guild_ids
+cp .env.example .env && chmod 600 .env   # put your bot token in DISCORD_TOKEN
 docker compose build
-docker compose run --rm --no-deps bot check
-docker compose run --rm --no-deps bot sync
+docker compose run --rm --no-deps bot check   # validates config, applies migrations
+docker compose run --rm --no-deps bot sync    # registers slash commands
 docker compose up -d --scale bot=1
-docker compose logs --tail=100 -f bot
 ```
 
-`check` sprawdza lokalną konfigurację i bazę oraz stosuje migracje. Nie sprawdza tokena ani połączenia z Discordem. `sync` loguje się i rejestruje komendy w skonfigurowanych serwerach. Uruchamiaj je przy pierwszym wdrożeniu oraz po zmianie komend lub listy serwerów. Zwykły start i reconnect nie wykonują rejestracji.
+The container is hardened: it runs as a non-root user (UID 10001) with a read-only root filesystem, all capabilities dropped and `no-new-privileges`. Data, logs and backups live in the `bot-data` volume. Secrets stay out of the image and out of Git.
 
-Kontener działa bez roota. Wolumen `bot-data` przechowuje bazę, logi i kopie. `restart: unless-stopped` i jedna replika są zapisane w `compose.yaml`. Blokada plikowa dodatkowo zapobiega uruchomieniu dwóch procesów z tą samą bazą. Nie uruchamiaj drugiej kopii bota na innym wolumenie. Nie używaj `docker compose down -v`, jeśli chcesz zachować dane.
+| Variable | Default | Purpose |
+|---|---|---|
+| `DISCORD_TOKEN` | required for `run`/`sync` | Bot token |
+| `DATABASE_PATH` | `data/bot.sqlite3` | SQLite file on persistent storage |
+| `CONFIG_PATH` | `config.json` | Servers and features |
+| `LOG_LEVEL` | `INFO` | `DEBUG` … `CRITICAL`. The token is redacted from logs |
+| `BACKUP_DIR` | `backups/` next to the database | Snapshot folder |
+| `OFFSITE_BACKUP_DIR` | unset | Mounted folder on independent storage |
+| `MARKET_*` | from `config.json` | Override market settings (see [`.env.example`](.env.example)) |
 
-| Zmienna | Domyślnie lokalnie | Znaczenie |
-| --- | --- | --- |
-| `DISCORD_TOKEN` | wymagany dla `run` i `sync` | Sekret bota. |
-| `DATABASE_PATH` | `data/bot.sqlite3` | Plik na trwałym dysku; w Compose `/data/bot.sqlite3`. |
-| `CONFIG_PATH` | `config.json` | Lista `guild_ids`; w Compose `/app/config.json`. |
-| `LOG_LEVEL` | `INFO` | DEBUG, INFO, WARNING, ERROR lub CRITICAL. |
-| `BACKUP_DIR` | `backups` obok bazy | W Compose `/data/backups`. |
-| `OFFSITE_BACKUP_DIR` | brak | Zamontowany katalog kopii poza maszyną. |
+Other commands: `backup` (manual snapshot while running) and `restore <file>` (bot stopped). To upgrade: back up, stop, rebuild, run `check` (migrations are transactional), run `sync` if commands changed, then start.
 
-Zmiany konfiguracji obowiązują po restarcie. Usunięcie serwera z konfiguracji wyłącza nowe komendy i wysyłkę jego oczekujących przypomnień. Aby usunąć stare zarejestrowane komendy z takiego serwera, usuń integrację bota w ustawieniach tego serwera.
+## Running on Windows
 
-## Lokalne uruchomienie i testy
+The desktop launcher bundles Python and the bot into a per-user installer. No admin rights are needed. The token is stored with Windows DPAPI, tied to your Windows account. See [docs/windows-launcher.md](docs/windows-launcher.md) for installing, moving the bot to another PC and rebuilding the installer.
 
-Dla Windows dostępny jest instalator **[WabotSetup.exe](dist/windows/WabotSetup.exe)** z launcherem, Pythonem oraz obecną konfiguracją i bazą. Obsługa Start/Stop, logi i przenoszenie danych są dostępne w oknie programu. [Instrukcja instalacji i przenoszenia](docs/windows-launcher.md).
+## Development
 
-Obsługiwany Python 3.11 lub 3.12; obraz Docker używa 3.12. Zależności, również przechodnie, są przypięte w `requirements.txt` i `requirements-dev.txt`.
-
-```powershell
+```sh
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m pip install --no-deps -e .
-Copy-Item config.example.json config.json
-# Edytuj config.json. Ustaw DISCORD_TOKEN prywatnie w środowisku procesu.
-# Opcjonalnie ustaw DATABASE_PATH i CONFIG_PATH dla swojego komputera.
-.\.venv\Scripts\python.exe -m wabot check
-.\.venv\Scripts\python.exe -m wabot sync
-.\.venv\Scripts\python.exe -m wabot run
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/pip install --no-deps -e .
+.venv/bin/pytest -q
+.venv/bin/ruff check .
 ```
 
-Nie trzeba aktywować venv ani zmieniać ExecutionPolicy PowerShell. Uruchomienie lokalne nie wczytuje automatycznie `.env`. Użyj zmiennych środowiskowych albo Compose. Nie ustawiaj lokalnie linuksowych ścieżek `/app` i `/data` z przykładu Docker.
+The suite has 400+ tests. They run on a controlled clock, with fake Discord and ESI responses and a real temporary SQLite database, so no token or network is needed. CI runs lint and tests on Windows with Python 3.11 and 3.12. Manual checks against a real Discord server are listed in [docs/acceptance.md](docs/acceptance.md).
 
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q
-.\.venv\Scripts\ruff.exe check src tests
-.\.venv\Scripts\ruff.exe format --check src tests
-```
+## Documentation
 
-Testy używają kontrolowanego zegara, atrap Discorda i prawdziwej tymczasowej bazy SQLite. Nie wymagają tokena i nie wysyłają wiadomości. Procedura odbioru na Discordzie i hostingu: [docs/acceptance.md](docs/acceptance.md).
+- [docs/windows-launcher.md](docs/windows-launcher.md): installer, launcher, item catalog, moving data
+- [docs/pvp-and-messages.md](docs/pvp-and-messages.md): killmail channels, channel tests, message templates, statistics corrections
+- [docs/acceptance.md](docs/acceptance.md): acceptance test plan for Discord and hosting
+- [docs/specification.txt](docs/specification.txt): original requirements (in Polish)
 
-## Kolejka, błędy i restart
+## License
 
-Co 5 sekund jeden pracownik odczytuje z SQLite gotowe wpisy `pending` i `retry`. Atomowe przejście do `sending` poprzedza żądanie. Sukces zapisuje `sent`, czas i ID wiadomości. Przypomnienia wysyłane są przez REST jako nowe wiadomości bota; nie korzystają z wygasającego tokena interakcji.
-
-- Opóźnienie 30–300 sekund: wiadomość z `Delayed reminder`. Ponad 300 sekund: `skipped_expired`, bez pingu.
-- Znany błąd przejściowy: retry po 5, 15, 30, potem 60 sekundach, wyłącznie w oknie pięciu minut. `429` respektuje `retry_after`.
-- Brak kanału lub trwałe `403`: `failed`. Utrata Mention Everyone po zapisie: zwykła informacja bez wzmianki i ostrzeżenie w bazie oraz logu.
-- Timeout po rozpoczęciu żądania i inne niejednoznaczne wyniki: `delivery_unknown`, bez automatycznej ponownej wysyłki. Tak samo traktowane są zastane przy starcie rekordy `sending`.
-
-Dokładnie jeden zapis zgłoszenia nie gwarantuje dokładnie jednej dostawy przez sieć. W niejednoznacznej sytuacji bot unika kolejnego pingu. Statystyki obejmują wszystkie zaakceptowane wpisy, także `failed`, `delivery_unknown` i pominięte przypomnienia. Otrzymany Timer ID pozwala odnaleźć wynik w logach.
-
-`docker compose restart bot` restartuje proces bez utraty danych. `docker compose stop bot` kończy bieżącą dostawę i zamyka połączenia. Logi są rotowane: pięć archiwów po 5 MB w `/data/logs`, a logi kontenera mają własną rotację.
-
-## Backup i odtworzenie
-
-Bot wykonuje spójny snapshot przez **SQLite Backup API** po starcie i co 24 godziny, zachowując siedem najnowszych kopii. Błąd backupu powoduje zapis błędu i ponowienie po godzinie. Nie kopiuj samego aktywnego pliku `.sqlite3` przy włączonym WAL.
-
-Ręczna kopia może działać przy uruchomionym bocie:
-
-```sh
-docker compose run --rm --no-deps bot backup
-```
-
-Kopie na tym samym VPS nie chronią przed utratą maszyny. Zamontuj zewnętrzny katalog albo regularnie przenoś gotowe snapshoty do niezależnego magazynu. Aby użyć wbudowanego kopiowania, utwórz `compose.override.yaml`:
-
-```yaml
-services:
-  bot:
-    environment:
-      OFFSITE_BACKUP_DIR: /offsite
-    volumes:
-      - /mnt/independent-backup/wabot:/offsite
-```
-
-`/mnt/independent-backup/wabot` musi być faktycznie podłączonym magazynem poza VPS, zapisywalnym dla UID/GID 10001. Zwykły lokalny katalog nie spełnia wymagania kopii poza maszyną. Sprawdź montowanie i dostępność w monitoringu hostingu. Bot kopiuje gotowy, zweryfikowany snapshot i zachowuje co najmniej siedem ostatnich plików także tam.
-
-Odtwarzanie wymaga zatrzymania bota. Wybierz plik z `/data/backups` lub wcześniej umieść zewnętrzny snapshot w tym wolumenie:
-
-```sh
-docker compose stop bot
-docker compose run --rm --no-deps bot restore /data/backups/NAZWA_KOPII.sqlite3
-docker compose up -d --scale bot=1
-```
-
-`restore` sprawdza integralność i wersję bazy na pliku tymczasowym. **Przed uruchomieniem kolejki** oznacza wszystkie rekordy z terminem nie późniejszym niż chwila odtworzenia jako `skipped_expired`. Chroni to przed ponownymi pingami ze starej kopii; statystyki pozostają. Nie zastępuj tego polecenia ręcznym kopiowaniem pliku na aktywną bazę. Blokady wykluczają jednoczesne odtwarzanie, pracę bota i ręczny backup.
-
-## Aktualizacja
-
-1. Zrób backup poleceniem powyżej i sprawdź kopię poza maszyną.
-2. `docker compose stop bot`, następnie wgraj nowe źródła i wykonaj `docker compose build`.
-3. `docker compose run --rm --no-deps bot check` zastosuje wersjonowane migracje z `src/wabot/migrations`.
-4. Jeśli zmieniły się komendy lub serwery, wykonaj `docker compose run --rm --no-deps bot sync`.
-5. `docker compose up -d --scale bot=1`, sprawdź logi i `/stats`.
-
-Migracje są transakcyjne i nie usuwają istniejących zgłoszeń. Aplikacja odrzuca bazę o nowszej wersji schematu. Przy cofnięciu wersji programu użyj zgodnego snapshotu i procedury `restore`.
-
-## Zakres przekazania
-
-Źródła, migracje, konfiguracja przykładowa, Docker, testy, backup i instrukcje są w tym katalogu. Do uruchomienia produkcyjnego właściciel musi dostarczyć aplikację Discord, ID serwera, token i hosting. Testy z prawdziwym Discordem oraz potwierdzenie działania przy wyłączonym komputerze właściciela wymagają tego środowiska. Koszt przygotowania/wdrożenia i miesięczny koszt VPS to osobne pozycje; projekt nie narzuca dostawcy ani abonamentu bazodanowego.
-
-Źródło wymagań: [wyciąg z dokumentu](docs/specification.txt). Dokumentacja: [interakcje i ich czas życia](https://docs.discord.com/developers/interactions/receiving-and-responding), [wiadomości i allowed_mentions](https://docs.discord.com/developers/resources/message), [uprawnienia](https://docs.discord.com/developers/topics/permissions).
+[MIT](LICENSE). EVE Online and all related data are the property of CCP hf. Killmail data comes from [zKillboard](https://zkillboard.com/). This project is not affiliated with CCP or Discord.

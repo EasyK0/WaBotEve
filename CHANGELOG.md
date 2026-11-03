@@ -4,6 +4,9 @@ All notable changes to Wabot. Adding a new version at the top publishes a GitHub
 
 ## [Unreleased]
 
+- Example config and docs no longer contain real Discord IDs; market reports stay off until a channel is set.
+- README and docs rewritten in English (architecture, reliability guarantees, deployment) with screenshots.
+- MIT license; CI runs with a read-only token.
 - CI: every push runs ruff and the full test suite on Windows with Python 3.11 and 3.12.
 
 ## [1.10.0] - 2026-10-27

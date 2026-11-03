@@ -1,54 +1,48 @@
-# Wabot — instalator i launcher Windows
+# Windows installer and launcher
 
-Gotowy instalator: `dist/windows/WabotSetup.exe`. Przenieś ten plik na drugi komputer z Windows 10/11 x64 i uruchom. Python i wszystkie biblioteki są dołączone; instalacja nie pobiera zależności i nie wymaga administratora. Do pracy bota potrzebne jest połączenie z Internetem.
+`WabotSetup.exe` installs Wabot for the current Windows user. No administrator rights are needed. Python and every library are bundled, so nothing is downloaded during installation. The bot itself needs an internet connection.
 
-Instalator tej kopii zawiera obecny `config.json` oraz spójną kopię bazy z chwili budowania. Zachowuje ID serwera, kanał rynku, raporty co 60 minut, osobne kolorowe wiadomości Datacasterów i pozostałych przedmiotów. Przy ponownej instalacji pozostawia istniejące ustawienia, bazę i token. Odinstalowanie usuwa program i skróty, ale zachowuje dane w `%LOCALAPPDATA%\Wabot`.
+Reinstalling keeps existing settings, the database and the saved token. Uninstalling removes the program and shortcuts, but keeps your data in `%LOCALAPPDATA%\Wabot`.
 
-## Pierwsze uruchomienie
+## First start
 
-1. Otwórz **Wabot Launcher** ze skrótu na pulpicie lub z menu Start.
-2. Obecna kopia źródłowa nie ma tokena Discorda. Tylko za pierwszym razem wklej token w zakładce **Ustawienia** i kliknij **Zapisz ustawienia**. Pozostałe pola są już uzupełnione. Token otrzymasz w [Discord Developer Portal](https://discord.com/developers/applications), w zakładce Bot odpowiedniej aplikacji; ID aplikacji nie jest tokenem.
-3. Kliknij **Start bota**. Launcher automatycznie rejestruje komendy przy pierwszym starcie lub zmianie konfiguracji, a potem uruchamia bota. Stan „Bot działa” oznacza połączenie z Discordem.
+1. Open **Wabot Launcher** from the desktop or the Start menu.
+2. On the **Bot token** page, paste the bot token and click **Save token**. You get the token in the [Discord Developer Portal](https://discord.com/developers/applications), on the *Bot* page of your application. The application ID is not the token.
+3. Add your Discord server with **+ Add server**, then choose the features for it on **Server features**.
+4. Click **▶ Start bot**. On the first start, and after a configuration change, the launcher registers slash commands automatically. The status turns to *Bot running* once the bot is connected to Discord.
 
-Przycisk **Zatrzymaj** i zamknięcie launchera kończą pracę bota po obsłużeniu bieżących zadań. Bot działa, kiedy launcher i komputer są uruchomione. **Sprawdź instalację** sprawdza konfigurację i bazę bez połączenia z Discordem. Logi są widoczne w oknie oraz w folderze danych `data/logs`.
+**■ Stop** and closing the launcher both stop the bot after it finishes the current work. The bot only runs while the launcher and the PC are on; for 24/7 operation use the [Docker deployment](../README.md#deploying-with-docker). **Check installation** validates the configuration and database without connecting to Discord. Logs are shown in the window and saved under `data/logs` in the data folder.
 
-## Wyszukiwanie i monitorowanie przedmiotów EVE
+The token is encrypted with [Windows DPAPI](https://learn.microsoft.com/en-us/windows/win32/api/dpapi/nf-dpapi-cryptprotectdata) for your Windows account, and it is redacted from the logs.
 
-1. Zatrzymaj bota i otwórz zakładkę **Przedmioty EVE**.
-2. Wpisz angielską nazwę, fragment nazwy lub ID przedmiotu. Wyszukiwanie obejmuje cały katalog; przy ponad 200 wynikach doprecyzuj nazwę.
-3. Zaznacz wynik i kliknij **Dodaj do monitorowanych →** (lub kliknij go dwukrotnie). Zapis następuje od razu. Przycisk **Usuń z monitorowanych** usuwa zaznaczony przedmiot z raportów.
-4. Uruchom bota. Nowe przedmioty są analizowane i uwzględniane w raportach według obecnych ustawień Jita + Perimeter, kanału i częstotliwości. Dotychczasowe progi cenowe pozostają zachowane. Raporty rynku muszą być włączone w **Ustawieniach**.
+## Watching EVE items
 
-Katalog pochodzi z [oficjalnego Static Data Export CCP](https://developers.eveonline.com/docs/services/static-data/) i obejmuje wszystkie opublikowane typy przedmiotów, także te bez rynku. Tylko przedmioty dostępne na rynku można dodać do analizy zleceń. Brak zleceń w Jita/Perimeter będzie widoczny w raporcie jak dotychczas.
+1. Stop the bot and open the **Market** page.
+2. Type an English item name, part of one, or a type ID. The search covers the whole catalog; past 200 results, narrow the name down.
+3. Select a result and click **Add to watched →** (or double-click it). **Remove from watched** takes an item out of the reports.
+4. Start the bot. New items appear in the next report with the current price thresholds, channel and interval.
 
-Kopia katalogu jest dołączona do programu, więc wyszukiwanie działa offline od pierwszego uruchomienia. **Aktualizuj katalog** pobiera bieżące dane CCP w tle (około 100 MB) i zapisuje mały katalog w folderze danych użytkownika. W razie problemu z pobieraniem poprzedni katalog pozostaje dostępny. Wybrane przedmioty są przechowywane w konfiguracji i przenoszone razem z eksportem danych.
+The catalog comes from the [official CCP Static Data Export](https://developers.eveonline.com/docs/services/static-data/) and lists every published item type, including ones that can't be traded. Only tradeable items can be added to the order analysis. A copy ships with the program, so search works offline. **Update catalog** downloads the current CCP data in the background (about 100 MB) and keeps a compact catalog in the data folder. If the download fails, the previous catalog stays in use.
 
-## Późniejsze przenoszenie z zachowaniem nowych danych
+## Moving the bot to another PC
 
-1. Zatrzymaj bota na starym komputerze.
-2. W zakładce **Przenieś bota** kliknij **Eksportuj dane i ustawienia**.
-3. Przenieś instalator i zapisany plik `Wabot-dane.wabot.zip` na drugi komputer.
-4. Zainstaluj program, wybierz **Importuj pakiet danych**, a potem **Start bota**. Nie trzeba przepisywać ustawień ani zapisanego tokena.
+1. Stop the bot on the old PC.
+2. On the **Move bot** page, click **Export data and settings** and save the `.wabot.zip` package.
+3. Install Wabot on the new PC, click **Import data package**, then **▶ Start bot**.
 
-Pakiet eksportu zawiera bazę, konfigurację i token, jeżeli został zapisany. Jest prywatną kopią bota; nie udostępniaj go innym osobom. Token w zainstalowanym launcherze jest chroniony przez Windows DPAPI dla danego użytkownika. Import zabezpiecza go ponownie dla użytkownika nowego komputera. Nie kopiuj samego `token.dpapi` pomiędzy komputerami.
+> **The package contains the database, the configuration and the bot token in plain form.** Treat it like a password: don't share it, and delete it after importing. The import encrypts the token again for the Windows account on the new PC. Never copy `token.dpapi` between computers, because it only works for the account that created it.
 
-Możesz też wybrać **Importuj folder starego bota**, wskazując folder z `config.json`, `data/bot.sqlite3` i opcjonalnym prywatnym `.env`. Przed zastąpieniem istniejącego profilu launcher zachowuje pakiet `backups/before-import-*.wabot.zip`. Przeterminowane przypomnienia są pomijane podczas importu, a statystyki pozostają. Uruchamiaj tylko jedną kopię bota na jednym komputerze.
+**Import old bot folder** takes a folder with `config.json`, `data/bot.sqlite3` and an optional private `.env`. Before replacing an existing profile, the launcher saves `backups/before-import-*.wabot.zip`. Overdue reminders are skipped during the import, and statistics are kept. Run only one copy of the bot per database.
 
-## Odtworzenie instalatora po zmianach w kodzie
+## Building the installer
 
-Na komputerze programisty z Pythonem 3.11/3.12 i [Inno Setup 6](https://jrsoftware.org/isdl.php):
+On a Windows machine with Python 3.11/3.12 and [Inno Setup 6](https://jrsoftware.org/isdl.php):
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
 .\.venv\Scripts\python.exe scripts/build_windows.py --iscc "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 ```
 
-Skrypt pobiera ustawienia z `config.json` i bazę z `data/bot.sqlite3`. Token bierze wyłącznie z prywatnego `.env`, zmiennej `DISCORD_TOKEN` lub wskazanego `--token-file` pliku `.env`. Nigdy nie odczytuje `.env.example`. Jeżeli dołączysz token, sam instalator również stanie się prywatnym pakietem. Pliki pakietu i instalatora pozostają w ignorowanych katalogach `build` i `dist`.
+The script packages the app with [PyInstaller](https://pyinstaller.org/en/stable/spec-files.html) and builds a [per-user Inno Setup installer](https://jrsoftware.org/ishelp/topic_setup_privilegesrequired.htm). It also writes a SHA-256 checksum and a `build-info.json` without secrets. Output goes to the ignored `build/` and `dist/` folders.
 
-Wynikiem jest `WabotSetup.exe`, suma SHA-256, plik `build-info.json` bez sekretów i ta instrukcja. Instalator nie jest podpisany komercyjnym certyfikatem wydawcy.
-
-Technologia pakowania: [PyInstaller](https://pyinstaller.org/en/stable/spec-files.html), [instalacja Inno Setup dla bieżącego użytkownika](https://jrsoftware.org/ishelp/topic_setup_privilegesrequired.htm), [ochrona tokena Windows DPAPI](https://learn.microsoft.com/en-us/windows/win32/api/dpapi/nf-dpapi-cryptprotectdata).
-
-## Pochven PvP, wiadomości i statystyki
-
-W zakładce **Pochven PvP** wpisz ID kanału i włącz alerty. W **Ustawienia → Wiadomości / pingi** edytujesz treść pingu timera, potwierdzenia /timer i pozostałych raportów. W **Ustawienia → Statystyki / ranking** poprawiasz wyniki graczy i przeglądasz historię korekt. Zapisz zmiany przy zatrzymanym bocie, a następnie uruchom go ponownie. [Opis ustawień i zmiennych](pochven-and-messages.md).
+The build can seed the installer with your current `config.json` and `data/bot.sqlite3`. It reads a token only from a private `.env`, the `DISCORD_TOKEN` variable or `--token-file`, and never from `.env.example`. **An installer built with a token is a private file: never publish it or attach it to a GitHub release.** The installer is not code-signed.
