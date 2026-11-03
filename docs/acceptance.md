@@ -1,39 +1,39 @@
-# Odbiór bota
+# Acceptance test plan
 
-## Testy automatyczne
+## Automated tests
 
-Uruchom `python -m pytest -q` w środowisku z `requirements-dev.txt` i zainstalowanym pakietem. Testy obejmują:
+Run `python -m pytest -q` with `requirements-dev.txt` and the package installed. The suite covers:
 
-- UTC, ścisłe HH:MM, minuty z sekundą 00, przejście przez północ i rok, granicę 23 minut.
-- Prywatne błędy, uprawnienia, zwykłe kanały tekstowe, publiczne potwierdzenia bez wzmianek.
-- Atomowy i idempotentny zapis, równoległe wywołania, rollback, awarię zapisu, restart.
-- Oddzielne serwery, wszystkie statusy pingu, zmianę nazwy autora, ranking 12 osób i globalne remisy.
-- Ping po terminie, opóźnienie 30/120/300 sekund i pominięcie po 301/360 sekundach.
-- Retry, `429 retry_after`, timeout z nieznanym wynikiem, brak kanału/uprawnień, brak powtórnego pingu po restarcie.
-- Pełny cykl: payout 20:20 Kino → restart → ping 20:43 → payout 20:50 Archee → ping 21:13. Statystyki końcowe: Kino 1, Archee 1, razem 2.
-- Backup aktywnej bazy WAL, siedem kopii, kopię zewnętrzną, bezpieczne odtworzenie i odrzucenie nieprawidłowej kopii.
+- UTC handling, strict `HH:MM` parsing, whole minutes, crossing midnight and new year, and the 23-minute boundary.
+- Private error replies, permission checks, plain text channels only, and public confirmations without mentions.
+- Atomic, idempotent writes: concurrent calls, rollback, write failure and restart.
+- Isolated servers, every ping status, author renames, a 12-player leaderboard and ties across pages.
+- On-time pings, 30/120/300-second delays, and skipping after 301/360 seconds.
+- Retries, `429 retry_after`, timeouts with an unknown result, missing channel or permissions, and no repeated ping after a restart.
+- A full cycle: payout 20:20 Kino → restart → ping 20:43 → payout 20:50 Archee → ping 21:13, with final statistics Kino 1, Archee 1, total 2.
+- Backups of a live WAL database: seven copies, an off-site copy, safe restore and rejection of a bad snapshot.
 
-## Test na serwerze Discord — do wykonania po konfiguracji
+## On a Discord server (after configuration)
 
-Użyj osobnego serwera testowego: test publikuje rzeczywiste `@everyone`. Utwórz zwykły kanał tekstowy, nadaj botowi View Channel, Send Messages i Mention Everyone. Zsynchronizuj komendy.
+Use a separate test server: these tests post real `@everyone` messages. Create a plain text channel, give the bot *View Channel*, *Send Messages* and *Mention Everyone*, and sync the commands.
 
-1. O 20:25 EVE Time wywołaj `/timer time:20:20 system:Kino`. Potwierdzenie powinno wskazać payout 20:20, respawn 20:43, Timer ID i +1, bez pingu.
-2. Sprawdź `/stats` i `/rank`. Zapisz sumy początkowe i potwierdź przyrost o jeden tylko dla autora i Kino.
-3. Zrestartuj proces przed 20:43. O 20:43, zwykle do 10 sekund po terminie, oczekuj jednego `@everyone` z prośbą o sprawdzenie Kino, Niarja i Archee. Sam ping nie zmienia sum.
-4. Po kolejnym ukończeniu w Archee z payoutem 20:50 wywołaj `/timer time:20:50 system:Archee`. Oczekuj nowego Timer ID, +1 Archee i tego autora, a o 21:13 kolejnego przypomnienia.
-5. Zgłoś złą godzinę oraz przeterminowany payout: prywatny błąd, bez zmiany sum. Bez Mention Everyone przed zapisem: odrzucenie.
-6. Odbierz Mention Everyone dopiero po przyjęciu następnego timera: przy terminie powinna pojawić się informacja bez pingu; w logu Timer ID i ostrzeżenie, statystyki zachowane.
-7. Zatrzymaj bota i uruchom 2 minuty po terminie: `Delayed reminder`. Powtórz z 6 minutami: brak pingu, `skipped_expired` w logu, punkt nadal liczony.
-8. Sprawdź izolację na drugim skonfigurowanym serwerze, zmianę nicku, brak pingu z nazw zawierających wzmianki, niedostępność w wątkach i DM.
+1. At 20:25 EVE time, run `/timer time:20:20 system:Kino`. The confirmation should show payout 20:20, respawn 20:43, a Timer ID and +1, with no ping.
+2. Run `/stats` and `/rank`. Note the totals and confirm that only this author and Kino went up by one.
+3. Restart the bot before 20:43. At 20:43 (normally within 10 seconds), expect exactly one `@everyone` asking to check Kino, Niarja and Archee. The ping itself doesn't change the totals.
+4. After another completion in Archee with payout 20:50, run `/timer time:20:50 system:Archee`. Expect a new Timer ID, +1 for Archee and this author, and another reminder at 21:13.
+5. Submit an invalid time and an overdue payout: each should get a private error and leave the totals unchanged. Without *Mention Everyone* before saving, the timer is refused.
+6. Remove *Mention Everyone* only after the next timer is accepted. At the due time, a notice without the ping should appear, with the Timer ID and a warning in the log. Statistics stay.
+7. Stop the bot and start it 2 minutes after a due time: expect `Delayed reminder`. Repeat with 6 minutes: no ping, `skipped_expired` in the log, and the completion still counts.
+8. Check isolation on a second configured server, nickname changes, that names containing mentions don't ping, and that commands don't work in threads or DMs.
 
-Zamiast podanych godzin można użyć bieżących godzin UTC, zachowując odstęp 23 minut od payoutu.
+You can use current UTC times instead of the ones above, as long as you keep the 23-minute gap after the payout.
 
-## Hosting 24/7 — do wykonania na VPS
+## 24/7 hosting (on the VPS)
 
-- Uruchom Compose na zewnętrznym hoście, sprawdź trwały wolumen, jedną replikę i politykę restartu.
-- Wyłącz komputer właściciela, pozostaw VPS włączony. Z innego urządzenia wykonaj `/timer` i potwierdź późniejsze przypomnienie.
-- Zrestartuj VPS i sprawdź zachowanie timera, danych oraz brak drugiego pracownika.
-- Sprawdź log ostatniego backupu i faktyczną kopię poza VPS. Odtwórz snapshot na osobnym wolumenie testowym; stare terminy muszą być pominięte, sumy zachowane.
-- Zanotuj datę, serwer, Timer ID, czas planowany i rzeczywisty oraz wynik każdego punktu.
+- Run Compose on the external host. Check the persistent volume, the single replica and the restart policy.
+- Turn the owner's PC off and leave the VPS running. From another device, run `/timer` and confirm the reminder arrives later.
+- Restart the VPS and check that timers and data survive and that no second worker starts.
+- Check the latest backup log and the actual off-site copy. Restore a snapshot onto a separate test volume: old reminders must be skipped and totals kept.
+- For every step, record the date, server, Timer ID, scheduled and actual time, and the result.
 
-Nie oznaczaj wdrożenia jako odebrane przed wykonaniem tych testów. Testy lokalne nie potwierdzają działania na prawdziwym Discordzie ani przy wyłączonym komputerze właściciela.
+Don't sign off a deployment before these checks pass. Local tests can't prove behaviour on real Discord, or that the bot keeps running with the owner's PC switched off.

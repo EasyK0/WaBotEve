@@ -104,7 +104,7 @@ def main():
         ),
     )
     shutil.copyfile(ROOT / "docs" / "windows-launcher.md", output / "Instrukcja.md")
-    shutil.copyfile(ROOT / "docs" / "pochven-and-messages.md", output / "pochven-and-messages.md")
+    shutil.copyfile(ROOT / "docs" / "pvp-and-messages.md", output / "pvp-and-messages.md")
     print(f"Installer ready: {installer}")
     print(f"Current settings included; token included: {bool(token)}")
 

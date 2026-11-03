@@ -8,7 +8,7 @@ a = Analysis(
         (str(root / "src" / "wabot" / "migrations" / "*.sql"), "wabot/migrations"),
         (str(root / "src" / "wabot" / "assets" / "*.json.gz"), "wabot/assets"),
         (str(root / "docs" / "windows-launcher.md"), "."),
-        (str(root / "docs" / "pochven-and-messages.md"), "."),
+        (str(root / "docs" / "pvp-and-messages.md"), "."),
     ],
     hiddenimports=["wabot.migrations"],
     excludes=["pytest"],
