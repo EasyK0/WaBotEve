@@ -1,0 +1,56 @@
+{
+  "guild_ids": [
+    "YOUR_DISCORD_SERVER_ID"
+  ],
+  "market": {
+    "enabled": false,
+    "channel_id": null,
+    "interval_minutes": 60,
+    "region_id": 10000002,
+    "jita_location_id": 60003760,
+    "perimeter_system_id": 30000144,
+    "datacaster_min_buy_price": "500000",
+    "datacaster_low_depth_units": 5000,
+    "request_timeout_seconds": 20,
+    "items": [
+      {
+        "type_id": 55831,
+        "display_name": "Triglavian Transconduit Datacaster",
+        "enabled": true,
+        "min_buy_price": "500000"
+      },
+      {
+        "type_id": 52244,
+        "display_name": "Veles Entropic Radiation Sink",
+        "enabled": true
+      },
+      {
+        "type_id": 52240,
+        "display_name": "Zorya's Supratidal Entropic Disintegrator",
+        "enabled": true
+      },
+      {
+        "type_id": 92541,
+        "display_name": "Capital Disintegrator Specialization",
+        "enabled": true
+      },
+      {
+        "type_id": 52238,
+        "display_name": "Zorya's Heavy Entropic Disintegrator",
+        "enabled": true
+      },
+      {
+        "type_id": 52236,
+        "display_name": "Zorya's Light Entropic Disintegrator",
+        "enabled": true
+      }
+    ]
+  },
+  "pvp": {
+    "enabled": false,
+    "ping": "none",
+    "role_id": null,
+    "system_channels": {}
+  },
+  "messages": {}
+}

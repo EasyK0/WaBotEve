@@ -1,0 +1,33 @@
+services:
+  bot:
+    build: .
+    image: wabot:local
+    restart: unless-stopped
+    init: true
+    command: ["run"]
+    env_file: .env
+    environment:
+      DATABASE_PATH: /data/bot.sqlite3
+      CONFIG_PATH: /app/config.json
+      BACKUP_DIR: /data/backups
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - bot-data:/data
+      - ./config.json:/app/config.json:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 60s
+    deploy:
+      replicas: 1
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+
+volumes:
+  bot-data:
