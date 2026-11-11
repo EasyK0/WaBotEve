@@ -228,6 +228,9 @@ class DesktopProfile:
         # Upgrades never replace an existing profile or its database/credentials.
         if self.config_path.exists():
             return
+        if not (seed / "config.json").is_file():
+            # A generic installer ships without settings; the launcher starts empty.
+            return
         if self.database_path.exists():
             raise ValueError(
                 "A bot database exists without config.json. Restore the configuration or use the data import in the launcher."

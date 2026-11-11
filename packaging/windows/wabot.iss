@@ -39,7 +39,7 @@ Name: "desktopicon"; Description: "Create a desktop shortcut to the launcher"; G
 
 [Files]
 Source: "{#PayloadDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{#SeedDir}\config.json"; DestDir: "{tmp}\WabotSeed"; Flags: ignoreversion deleteafterinstall
+Source: "{#SeedDir}\config.json"; DestDir: "{tmp}\WabotSeed"; Flags: ignoreversion deleteafterinstall skipifsourcedoesntexist
 Source: "{#SeedDir}\bot.sqlite3"; DestDir: "{tmp}\WabotSeed"; Flags: ignoreversion deleteafterinstall skipifsourcedoesntexist
 Source: "{#SeedDir}\credentials.json"; DestDir: "{tmp}\WabotSeed"; Flags: ignoreversion deleteafterinstall skipifsourcedoesntexist
 

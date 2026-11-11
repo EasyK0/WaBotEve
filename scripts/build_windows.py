@@ -31,14 +31,18 @@ def main():
     args = parser.parse_args()
     if os.name != "nt":
         raise SystemExit("Build this Windows installer on Windows.")
-    config = read_config(args.config)
+    # Without a config.json this builds a generic installer: no servers, no data, no token.
+    config = read_config(args.config) if args.config.is_file() else None
     token = read_env_token(args.token_file or ROOT / ".env")
     if not token:
         token = validate_token(os.environ.get("DISCORD_TOKEN", ""))
     seed = ROOT / "build" / "windows" / "seed"
     seed.mkdir(parents=True, exist_ok=True)
-    atomic_write(seed / "config.json", json_bytes(config))
-    if args.database.is_file():
+    if config is not None:
+        atomic_write(seed / "config.json", json_bytes(config))
+    else:
+        (seed / "config.json").unlink(missing_ok=True)
+    if config is not None and args.database.is_file():
         snapshot_database(args.database, seed / "bot.sqlite3")
     else:
         (seed / "bot.sqlite3").unlink(missing_ok=True)
@@ -98,15 +102,16 @@ def main():
                 "version": APP_VERSION,
                 "sha256": digest,
                 "token_included": bool(token),
-                "database_included": args.database.is_file(),
-                "market_interval_minutes": config.get("market", {}).get("interval_minutes", 60),
+                "config_included": config is not None,
+                "database_included": config is not None and args.database.is_file(),
+                "market_interval_minutes": (config or {}).get("market", {}).get("interval_minutes", 60),
             }
         ),
     )
     shutil.copyfile(ROOT / "docs" / "windows-launcher.md", output / "Instrukcja.md")
     shutil.copyfile(ROOT / "docs" / "pvp-and-messages.md", output / "pvp-and-messages.md")
     print(f"Installer ready: {installer}")
-    print(f"Current settings included; token included: {bool(token)}")
+    print(f"Settings included: {config is not None}; token included: {bool(token)}")
 
 
 if __name__ == "__main__":

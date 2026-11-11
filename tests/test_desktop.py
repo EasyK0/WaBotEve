@@ -93,6 +93,16 @@ def test_upgrade_never_overwrites_existing_profile(seed, tmp_path):
     assert read_config(profile.config_path)["market"]["interval_minutes"] == 120
 
 
+def test_generic_installer_without_seed_config_leaves_profile_empty(tmp_path):
+    empty_seed = tmp_path / "seed"
+    empty_seed.mkdir()
+    profile = DesktopProfile(tmp_path / "installed")
+    profile.bootstrap(empty_seed)
+    assert not profile.config_path.exists()
+    assert not profile.database_path.exists()
+    assert not profile.token_path.exists()
+
+
 def test_installer_does_not_replace_existing_database_without_config(seed, tmp_path):
     profile = DesktopProfile(tmp_path / "installed")
     profile.database_path.parent.mkdir(parents=True)
